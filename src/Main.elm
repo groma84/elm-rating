@@ -24,28 +24,6 @@ type Rating
     | Five
 
 
-ratingToNumber : Maybe Rating -> Int
-ratingToNumber rating =
-    case rating of
-        Nothing ->
-            0
-
-        Just One ->
-            1
-
-        Just Two ->
-            2
-
-        Just Three ->
-            3
-
-        Just Four ->
-            4
-
-        Just Five ->
-            5
-
-
 numberToRating : Int -> Maybe Rating
 numberToRating number =
     case number of
@@ -68,6 +46,34 @@ numberToRating number =
             Nothing
 
 
+type alias StarCounts =
+    { numberOfFilledStars : Int
+    , numberOfEmptyStars : Int
+    }
+
+
+ratingToStarCounts : Maybe Rating -> StarCounts
+ratingToStarCounts rating =
+    case rating of
+        Nothing ->
+            StarCounts 0 5
+
+        Just One ->
+            StarCounts 1 4
+
+        Just Two ->
+            StarCounts 2 3
+
+        Just Three ->
+            StarCounts 3 2
+
+        Just Four ->
+            StarCounts 4 1
+
+        Just Five ->
+            StarCounts 5 0
+
+
 init : ( Model, Cmd Msg )
 init =
     ( { title = "A fancy title"
@@ -82,13 +88,17 @@ init =
 
 
 type Msg
-    = StarClicked (Maybe Rating)
+    = StarClicked Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        StarClicked newRating ->
+        StarClicked clickedIndex ->
+            let
+                newRating =
+                    numberToRating clickedIndex
+            in
             ( { model | rating = newRating }, Cmd.none )
 
 
@@ -99,34 +109,37 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
+        -- HTML-Element für leeren Stern
         emptyStar index =
-            span [ style "cursor" "pointer", onClick (StarClicked (numberToRating index)) ] [ text "☆" ]
+            span [ style "cursor" "pointer", onClick (StarClicked index) ] [ text "☆" ]
 
+        -- HTML-Element für gefüllten Stern
         filledStar index =
-            span [ style "cursor" "pointer", style "color" "yellow", onClick (StarClicked (numberToRating index)) ] [ text "★" ]
+            span [ style "cursor" "pointer", style "color" "yellow", onClick (StarClicked index) ] [ text "★" ]
 
-        ( numberOfFilledStars, numberOfEmptyStars ) =
-            let
-                numberOfFilled =
-                    ratingToNumber model.rating
-            in
-            ( numberOfFilled, 5 - numberOfFilled )
+        -- wieviele Sterne von welcher Art werden benötigt?
+        { numberOfFilledStars, numberOfEmptyStars } =
+            ratingToStarCounts model.rating
 
+        -- alle DOM-Elemente für die gefüllten Sterne
         renderedFilledStars =
+            -- Liste mit Zahlen: [1..n]
             List.range 1 numberOfFilledStars
+                -- Für jede Zahl einmal die HTML-Element-Funktion mit der Zahl als zusätzliches Argument aufrufen
                 |> List.map filledStar
 
+        -- alle DOM-Elemente für die leeren Sterne
         renderedEmptyStars =
             List.range (numberOfFilledStars + 1) (numberOfFilledStars + numberOfEmptyStars)
                 |> List.map emptyStar
 
-        renderedStars =
+        -- Liste mit allen notwendigen Stern-DOM-Elementen erzeugen
+        allRenderedStars =
             renderedFilledStars ++ renderedEmptyStars
     in
-    div [ style "background-color" "lightgrey", style "width" "200px", style "display" "flex", style "flex-direction" "column", style "align-items" "center" ]
+    div [ class "elm-rating__wrapper" ]
         [ h2 [] [ text model.title ]
-        , div [ style "display" "flex", style "font-size" "3rem" ]
-            renderedStars
+        , div [ class "elm-rating__star-container" ] allRenderedStars
         ]
 
 
