@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
 import Html exposing (..)
@@ -74,13 +74,53 @@ ratingToStarCounts rating =
             StarCounts 5 0
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { title = "A fancy title"
-      , rating = Nothing
+type alias Flags =
+    { title : String
+    , rating : Maybe String
+    }
+
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    let
+        parsedRating =
+            let
+                parsedString =
+                    Maybe.andThen String.toInt flags.rating
+            in
+            Maybe.andThen numberToRating parsedString
+    in
+    ( { title = flags.title
+      , rating = parsedRating
       }
     , Cmd.none
     )
+
+
+
+---- PORTS ----
+
+
+ratingToString : Rating -> String
+ratingToString rating =
+    case rating of
+        One ->
+            "1"
+
+        Two ->
+            "2"
+
+        Three ->
+            "3"
+
+        Four ->
+            "4"
+
+        Five ->
+            "5"
+
+
+port ratingChanged : Flags -> Cmd msg
 
 
 
@@ -98,8 +138,14 @@ update msg model =
             let
                 newRating =
                     numberToRating clickedIndex
+
+                ratingAsString =
+                    Maybe.map ratingToString newRating
+
+                ratingChangedPortCmd =
+                    ratingChanged { title = model.title, rating = ratingAsString }
             in
-            ( { model | rating = newRating }, Cmd.none )
+            ( { model | rating = newRating }, ratingChangedPortCmd )
 
 
 
@@ -147,11 +193,11 @@ view model =
 ---- PROGRAM ----
 
 
-main : Program () Model Msg
+main : Program Flags Model Msg
 main =
     Browser.element
         { view = view
-        , init = \_ -> init
+        , init = init
         , update = update
         , subscriptions = always Sub.none
         }
